@@ -4,8 +4,8 @@ require("dotenv").config();
 const express = require("express");
 const app = express();
 // Redis for data
-const redis = require("redis");
-const redisClient = redis.createClient({
+const { createNodeRedisClient } = require("handy-redis");
+const redisClient = createNodeRedisClient({
   host: process.env.REDIS_HOST || "localhost",
   port: process.env.REDIS_PORT || 6379,
   password: process.env.REDIS_PASSWORD,

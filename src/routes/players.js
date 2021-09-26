@@ -9,16 +9,14 @@ let cachedNamesSetName = process.env.CACHED_SET || "uuids:names";
 
 // List all the players in their respective team
 router.get("", async (req, res) => {
-  index.getRedisClient().hgetall(currentSet, async (err, reply) => {
-    if (err) throw err;
-    var response = await real(reply);
-    if (response != null) {
-      //JSON.parse(reply);
-      res.json({ dataset: currentSet, response });
-    } else {
-      res.json({ dataset: currentSet, response: [] });
-    }
-  });
+  var reply = await index.getRedisClient().hgetall(currentSet);
+  var response = await real(reply);
+  if (response != null) {
+    //JSON.parse(reply);
+    res.json({ dataset: currentSet, response });
+  } else {
+    res.json({ dataset: currentSet, response: [] });
+  }
 });
 // List a specific player and their team
 router.get("/player/:id", async (req, res) => {});
@@ -30,7 +28,7 @@ async function real(reply) {
   for (const key of keys) {
     var content = JSON.parse(reply[key]);
     var modifiedContent = await modifyObjectToIncludeNames(content);
-    console.log(modifiedContent);
+    //console.log(modifiedContent);
     response.push(modifiedContent);
   }
   return response;
@@ -44,10 +42,7 @@ async function modifyObjectToIncludeNames(teamObject) {
     var playerObject = { id: players[player] };
     var playerName = await getPlayerName(playerObject.id);
     if (playerName != null) {
-      playerObject.name = playerName;
-      writeNameForId(playerObject.id, playerName);
-    } else {
-      writeNameForId(playerObject.id, -1);
+      if (playerObject.id != -1) playerObject.name = playerName;
     }
     playersWithNames.push(playerObject);
   }
@@ -57,29 +52,50 @@ async function modifyObjectToIncludeNames(teamObject) {
 }
 
 async function writeNameForId(id, name) {
-  await index
+  let timeStamp = new Date().getTime();
+  index
     .getRedisClient()
-    .hset(cachedNamesSetName, id, { name, timeStamp: new Date().getTime() }),
-    (err, reply) => {
-      if (err) throw err;
-      console.log(reply);
-    };
+    .hset(cachedNamesSetName, id, JSON.stringify({ name, timeStamp }));
 }
 
 async function getPlayerName(id) {
+  var name = await index.getRedisClient().hget(cachedNamesSetName, id);
+
+  if (name != null) {
+    var responseObject = JSON.parse(name);
+    responseObject.id = id;
+    //console.log(responseObject);
+    return responseObject.name;
+  } else {
+    console.log("Null querying db");
+    var response = await getPlayerNameFromPlayerdb(id);
+    return response || -1;
+  }
+}
+
+async function getPlayerNameFromPlayerdb(id) {
   try {
     //Ask playerdb for the player name
     const response = await axios.get(
       `https://playerdb.co/api/player/minecraft/${id}`
     );
+    console.log(response);
     var player = response.data;
 
     if (player.code === "player.found") {
       var playerName = player.data.player.username;
+      writeNameForId(id, playerName);
+      console.log("player found");
       return playerName;
+    } else {
+      //If the playerdb api fails, mojang doesn't know the player, and thus they don't exist.
+      console.log("player not found");
+      writeNameForId(id, -1);
+      return "null";
     }
   } catch (error) {
-    //console.log(error);
+    console.log("player not found");
+    writeNameForId(id, null);
   }
 }
 
