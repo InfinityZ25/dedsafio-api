@@ -9,14 +9,19 @@ router.get("", async (req, res) => {
   index.getRedisClient().hgetall("ffa", async (err, reply) => {
     if (err) throw err;
     var response = await real(reply);
-    //JSON.parse(reply);
-    res.json({ dataset: currentSet, response });
+    if (response != null) {
+      //JSON.parse(reply);
+      res.json({ dataset: currentSet, response });
+    } else {
+      res.json({ dataset: currentSet, response: [] });
+    }
   });
 });
 // List a specific player and their team
 router.get("/player/:id", async (req, res) => {});
 
 async function real(reply) {
+  if (reply == null) return null;
   var keys = Object.keys(reply);
   var response = [];
   for (const key of keys) {
