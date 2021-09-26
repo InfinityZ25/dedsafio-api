@@ -4,27 +4,32 @@ const axios = require("axios").default;
 
 // List all the players in their respective team
 router.get("", async (req, res) => {
-  index.getRedisClient().hgetall("ffa", (err, reply) => {
+  index.getRedisClient().hgetall("ffa", async (err, reply) => {
     if (err) throw err;
-
-    var keys = Object.keys(reply);
-    var reponse = [];
-    for (const key of keys) {
-      var content = JSON.parse(reply[key]);
-      var modifiedContent = await modifyObjectToIncludeNames(content);
-      console.log(modifiedContent);
-      reponse.push(modifiedContent);
-    }
+    var response = await real(reply);
     //JSON.parse(reply);
-    res.json({ reponse });
+    res.json({ response });
   });
 });
 // List a specific player and their team
 router.get("/player/:id", async (req, res) => {});
 
+async function real(reply) {
+  var keys = Object.keys(reply);
+  var response = [];
+  for (const key of keys) {
+    var content = JSON.parse(reply[key]);
+    var modifiedContent = await modifyObjectToIncludeNames(content);
+    console.log(modifiedContent);
+    response.push(modifiedContent);
+  }
+  return response;
+}
+
 async function modifyObjectToIncludeNames(teamObject) {
   var players = teamObject.members;
   var playersWithNames = [];
+
   for (const player in players) {
     var playerObject = { id: players[player] };
     var playerName = await getPlayerName(playerObject.id);
@@ -35,6 +40,7 @@ async function modifyObjectToIncludeNames(teamObject) {
     playersWithNames.push(playerObject);
   }
   teamObject.players = playersWithNames;
+  delete teamObject.members;
   return teamObject;
 }
 
