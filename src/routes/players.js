@@ -56,7 +56,7 @@ async function getTeamOfPlayer(id) {
     var teamObject = JSON.parse(team);
     // If the player is in the team, return the team object.
     if (teamObject.members.includes(id)) {
-      return teamObject;
+      return await modifyObjectToIncludeNames(teamObject);
     }
   }
   return null;
