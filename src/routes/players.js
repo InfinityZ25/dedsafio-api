@@ -25,7 +25,42 @@ router.get("", async (req, res) => {
   }
 });
 // List a specific player and their team
-router.get("/player/:id", async (req, res) => {});
+router.get("/player/:id", async (req, res) => {
+  if (!index.getAuth().isAuthenticated(req, res)) {
+    return;
+  }
+  var id = req.params.id;
+  var match = await getTeamOfPlayer(id);
+
+  if (match != null) {
+    res.json({ dataset: currentSet, match });
+  } else {
+    res.json({ dataset: currentSet, match: {} });
+  }
+});
+
+/**
+ * A function that obtains the team of a player is existing in the database.
+ *
+ * @param {*} id ID of the player to get the name of.
+ * @returns {Promise<Object>} A promise that resolves to the real name of the player or null if not existing.
+ */
+async function getTeamOfPlayer(id) {
+  var reply = await index.getRedisClient().hgetall(currentSet);
+  let keys = Object.keys(reply);
+
+  for (const key of keys) {
+    // Obtain the team object from the reply.
+    let team = reply[key];
+    // Parse the object into a JSON object.
+    var teamObject = JSON.parse(team);
+    // If the player is in the team, return the team object.
+    if (teamObject.members.includes(id)) {
+      return teamObject;
+    }
+  }
+  return null;
+}
 
 /**
  * A function that queries the redis backend hash for all the teams. This Function also returns the team members with their real names.
