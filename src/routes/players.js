@@ -2,11 +2,14 @@ const router = require("express").Router();
 const index = require("../index");
 const axios = require("axios").default;
 
+// Current set is the name of the hash in the redis backend.
 var currentSet = "ffa";
+// The name of the hash to store the cached playerdb.co responses in.
+let cachedNamesSetName = process.env.CACHED_SET || "uuids:names";
 
 // List all the players in their respective team
 router.get("", async (req, res) => {
-  index.getRedisClient().hgetall("ffa", async (err, reply) => {
+  index.getRedisClient().hgetall(currentSet, async (err, reply) => {
     if (err) throw err;
     var response = await real(reply);
     if (response != null) {
@@ -42,13 +45,25 @@ async function modifyObjectToIncludeNames(teamObject) {
     var playerName = await getPlayerName(playerObject.id);
     if (playerName != null) {
       playerObject.name = playerName;
-      //console.log(playerObject);
+      writeNameForId(playerObject.id, playerName);
+    } else {
+      writeNameForId(playerObject.id, -1);
     }
     playersWithNames.push(playerObject);
   }
   teamObject.players = playersWithNames;
   delete teamObject.members;
   return teamObject;
+}
+
+async function writeNameForId(id, name) {
+  await index
+    .getRedisClient()
+    .hset(cachedNamesSetName, id, { name, timeStamp: new Date().getTime() }),
+    (err, reply) => {
+      if (err) throw err;
+      console.log(reply);
+    };
 }
 
 async function getPlayerName(id) {
