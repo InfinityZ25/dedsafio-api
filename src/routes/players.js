@@ -13,7 +13,7 @@ const nCache = new NodeCache({ stdTTL: 120 });
 // List all the players in their respective team
 router.get("", async (req, res) => {
   var reply = await index.getRedisClient().hgetall(currentSet);
-  var response = await real(reply);
+  var response = await getAllTeams(reply);
   if (response != null) {
     //JSON.parse(reply);
     res.json({ dataset: currentSet, response });
@@ -24,37 +24,59 @@ router.get("", async (req, res) => {
 // List a specific player and their team
 router.get("/player/:id", async (req, res) => {});
 
-async function real(reply) {
+/**
+ * A function that queries the redis backend hash for all the teams. This Function also returns the team members with their real names.
+ *
+ * @param {*} reply A reply string from the redis backend hash containing all the teams in a "field: object" format.
+ * @returns {Promise<object>} A promise that resolves to an array of team objects.
+ */
+async function getAllTeams(reply) {
   if (reply == null) return null;
-  var keys = Object.keys(reply);
-  var response = [];
-  for (const key of keys) {
-    var content = JSON.parse(reply[key]);
-    var modifiedContent = await modifyObjectToIncludeNames(content);
-    response.push(modifiedContent);
-  }
-  return response;
-}
+  var teamsArray = [];
+  // Use object.keys to obtain the keys of the reply object and parse through them.
+  let keys = Object.keys(reply);
 
+  for (const key of keys) {
+    // Obtain the team object from the reply.
+    let team = reply[key];
+    // Parse the object into a JSON object.
+    var teamObject = JSON.parse(team);
+    // Modify the team object to include the real names of the players.
+    var namefiedTeamObject = await modifyObjectToIncludeNames(teamObject);
+    // Add the team object to the teamsArray.
+    teamsArray.push(namefiedTeamObject);
+  }
+  // Return the new teamsArray containing all the teams with the member's real names.
+  return teamsArray;
+}
+/**
+ * Function that takes a team object and returns the object modified to include the real name of the uuids.
+ *
+ * @param {*} teamObject The team object to modify.
+ * @returns {Promise<object>} A promise that resolves to the modified team object.
+ */
 async function modifyObjectToIncludeNames(teamObject) {
   // Obtain the players from the team object's members array.
   var players = teamObject.members;
   // Initialize a new array to stored the player objects with real names.
   var playersWithNames = [];
-
+  // Loop through the players array and obtain the real name of each player.
   for (const player in players) {
+    // Create a playerObject to store the real name of the player with its uuid.
     var playerObject = { id: players[player] };
+    // Obtain the real name of the player. If the player does not exist, the name will be null.
     var playerName = await getPlayerName(playerObject.id);
-    if (playerName != null) {
-      if (playerObject.id != -1) playerObject.name = playerName;
-    }
+    // If the player exists, add the real name to the playerObject
+    if (playerName != null && playerObject.id != -1)
+      playerObject.name = playerName;
+    // Add the playerObject to the playersWithNames array.
     playersWithNames.push(playerObject);
   }
-  // Add the playersWithNams array to the teamObject.
+  // Add the playersWithNames array to the teamObject as a players array of objects.
   teamObject.players = playersWithNames;
   // Delete the default teamObject members array from the copy that will be sent to the client.
   delete teamObject.members;
-  // Return the teamObject.
+  // Return the teamObject with real names appended.
   return teamObject;
 }
 
