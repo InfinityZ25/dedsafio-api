@@ -12,6 +12,7 @@ const redisClient = createNodeRedisClient({
 });
 // Import routes
 const players = require("./routes/players");
+const auth = require("./auth/auth.js");
 
 // Middleware
 app.use(express.json());
@@ -26,3 +27,4 @@ app.listen(PORT, () => console.log(`Serving on port ${PORT}`));
 
 // Exports
 module.exports.getRedisClient = () => redisClient;
+module.exports.getAuth = () => auth;

@@ -12,6 +12,10 @@ const nCache = new NodeCache({ stdTTL: 120 });
 
 // List all the players in their respective team
 router.get("", async (req, res) => {
+  if (!index.getAuth().isAuthenticated(req, res)) {
+    console.log("Not authorized.");
+    return;
+  }
   var reply = await index.getRedisClient().hgetall(currentSet);
   var response = await getAllTeams(reply);
   if (response != null) {
