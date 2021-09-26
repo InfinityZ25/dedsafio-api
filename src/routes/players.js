@@ -13,7 +13,6 @@ const nCache = new NodeCache({ stdTTL: 120 });
 // List all the players in their respective team
 router.get("", async (req, res) => {
   if (!index.getAuth().isAuthenticated(req, res)) {
-    console.log("Not authorized.");
     return;
   }
   var reply = await index.getRedisClient().hgetall(currentSet);
@@ -145,7 +144,7 @@ async function getPlayerNameFromPlayerdb(id) {
 /**
  * A function that writes data regarding the real player name of a uuid to the redis backend hash.
  * @param {*} id The uuid of the player. Stringified UUID.
- * @param {*} name The real name of the player. If null or -1 is passed, the player is assumed to not exist.
+ * @param {String} name The real name of the player. If null or -1 is passed, the player is assumed to not exist.
  * @returns {Promise<number>} A promise that resolves when the data is written to the redis backend.
  */
 async function writeNameForId(id, name) {
@@ -155,5 +154,14 @@ async function writeNameForId(id, name) {
     .hset(cachedNamesSetName, id, JSON.stringify({ name, timeStamp }));
 }
 
+/**
+ * Change the name of the dataset being used for all queries.
+ * @param {String} set
+ */
+function changeCurrentSet(set) {
+  currentSet = set;
+}
+
 // Exports the express router for index.js to use.
 module.exports = router;
+module.exports.changeSet = (set) => changeCurrentSet(set);
