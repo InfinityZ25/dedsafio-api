@@ -65,13 +65,8 @@ async function modifyObjectToIncludeNames(teamObject) {
  * @returns {Promise<string>} A promise that resolves to the real name of the player or null if not existing.
  */
 async function getPlayerName(id) {
-  // Check local cache first
-  if (nCache.has(id)) {
-    console.log("pulling from local cache");
-    var playerName = nCache.get(id);
-    console.log(playerName);
-    return playerName;
-  }
+  // Check local cache first, if so return it
+  if (nCache.has(id)) return nCache.get(id);
   // Ask redis for the name of the player, if cached.
   var name = await index.getRedisClient().hget(cachedNamesSetName, id);
   // If found, return the name.
