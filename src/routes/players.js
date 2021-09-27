@@ -15,6 +15,9 @@ router.get("", async (req, res) => {
   if (!index.getAuth().isAuthenticated(req, res)) {
     return;
   }
+  // Use this to select a different set?
+  var set = req.query.set;
+  console.log(set);
   var reply = await index.getRedisClient().hgetall(currentSet);
   var response = await getAllTeams(reply);
   if (response != null) {
@@ -29,13 +32,16 @@ router.get("/player/:id", async (req, res) => {
   if (!index.getAuth().isAuthenticated(req, res)) {
     return;
   }
+  // Use this to select a different set?
+  var set = req.query.set;
+  console.log(set);
   var id = req.params.id;
-  var match = await getTeamOfPlayer(id);
+  var response = await getTeamOfPlayer(id);
 
-  if (match != null) {
-    res.json({ dataset: currentSet, match });
+  if (response != null) {
+    res.json({ dataset: currentSet, response });
   } else {
-    res.json({ dataset: currentSet, match: {} });
+    res.json({ dataset: currentSet, response: {} });
   }
 });
 

@@ -2,9 +2,7 @@ const index = require("../index");
 // Redis for data
 const { createNodeRedisClient } = require("handy-redis");
 const redisClient = createNodeRedisClient({
-  host: process.env.REDIS_HOST || "localhost",
-  port: process.env.REDIS_PORT || 6379,
-  password: process.env.REDIS_PASSWORD,
+  url: process.env.REDIS_URL || "redis://localhost:6379",
 });
 
 redisClient.nodeRedis.on("message", (channel, message) => {
