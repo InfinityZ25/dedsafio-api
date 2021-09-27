@@ -12,7 +12,7 @@ const nCache = new NodeCache({ stdTTL: 120 });
 
 // List all the players in their respective team
 router.get("", async (req, res) => {
-  if (!index.getAuth().isAuthenticated(req, res)) {
+  if (!(await index.getAuth().isAuthenticated(req, res))) {
     return;
   }
   // Use this to select a different set?
@@ -29,7 +29,7 @@ router.get("", async (req, res) => {
 });
 // List a specific player and their team
 router.get("/player/:id", async (req, res) => {
-  if (!index.getAuth().isAuthenticated(req, res)) {
+  if (!(await index.getAuth().isAuthenticated(req, res))) {
     return;
   }
   // Use this to select a different set?

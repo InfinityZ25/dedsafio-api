@@ -1,12 +1,11 @@
 const index = require("../index");
 
-function authorization(request, reponse) {
+async function authorization(request, reponse) {
   if (request.headers.authorization) {
     //Expected header => Authorization: Bearer <token>
     const token = request.headers.authorization.split(" ")[1];
-    if (allowed(token)) {
-      return true;
-    }
+    var allowed = await verifyToken(token);
+    if (allowed) return allowed;
   }
   reponse.status(401).send("Unauthorized");
   return false;
@@ -18,8 +17,11 @@ function authorization(request, reponse) {
  * @param {*} token The token to be validated
  * @returns {boolean} true if the token is valid, false otherwise.
  */
-function allowed(token) {
-  return token != null;
+async function verifyToken(token) {
+  return (
+    token != null &&
+    (await index.getRedisClient().sismember("authentication", token)) === 1
+  );
 }
 
 module.exports.isAuthenticated = (request, reponse) =>
