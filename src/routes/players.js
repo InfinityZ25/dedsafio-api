@@ -2,7 +2,8 @@ const router = require("express").Router();
 const index = require("../index");
 const NodeCache = require("node-cache");
 const axios = require("axios").default;
-
+const { v1: uuidv1, v4: uuidv4 } = require("uuid");
+const { json } = require("express/lib/response");
 // Current set is the name of the hash in the redis backend.
 var currentSet = "ffa";
 // The name of the hash to store the cached playerdb.co responses in.
@@ -19,13 +20,10 @@ router.get("", async (req, res) => {
   var set = req.query.set;
   console.log(set);
   var reply = await index.getRedisClient().hgetall(currentSet);
-  var response = await getAllTeams(reply);
-  if (response != null) {
-    //JSON.parse(reply);
-    res.json({ dataset: currentSet, response });
-  } else {
-    res.json({ dataset: currentSet, response: [] });
-  }
+  var response = (await getAllTeams(reply)) || [];
+  // Sort in descending order by points.
+  response.sort((a, b) => b.points - a.points);
+  res.json({ dataset: currentSet, response });
 });
 // List a specific player and their team
 router.get("/player/:id", async (req, res) => {
@@ -44,6 +42,37 @@ router.get("/player/:id", async (req, res) => {
     res.json({ dataset: currentSet, response: {} });
   }
 });
+
+// Put endpoint, just for dev purposes.
+router.put("/", async (req, res) => {
+  if (!(await index.getAuth().isAuthenticated(req, res))) {
+    return;
+  }
+  var body = req.body;
+  var id = uuidv4();
+  index
+    .getRedisClient()
+    .hset(currentSet, id, JSON.stringify(await generateTeam(body, id)));
+  console.log(body);
+  res.json({ code: "success", teamId: id });
+});
+
+async function generateTeam(body, id) {
+  var team = {
+    teamID: id,
+    members: [],
+    teamName: body.teamName,
+    points: 0,
+  };
+  var members = body.members;
+  for (var i = 0; i < members.length; i++) {
+    var member = members[i];
+    var player = await getPlayerUUIDFromName(member);
+    team.members.push(player);
+  }
+
+  return team;
+}
 
 /**
  * A function that obtains the team of a player is existing in the database.
@@ -179,6 +208,28 @@ async function getPlayerNameFromPlayerdb(id) {
   }
   // If we get here, the player doesn't exist. Write them as null and return null.
   writeNameForId(id, null);
+  return null;
+}
+
+async function getPlayerUUIDFromName(name) {
+  try {
+    // Ask playerdb for the player nname using a uuid.
+    const response = await axios.get(
+      `https://playerdb.co/api/player/minecraft/${name}`
+    );
+    // Obtain the object data from the response.
+    var playerQuery = response.data;
+    // Use the code to determine if the player does exist or not.
+    if (playerQuery.code === "player.found") {
+      // Obtain the username from the response
+      var id = playerQuery.data.player.id;
+      // Write without blocking the name to the redis backend hash and return the name.
+      return id;
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  // If we get here, the player doesn't exist. Write them as null and return null.
   return null;
 }
 
