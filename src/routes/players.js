@@ -17,13 +17,12 @@ router.get("", async (req, res) => {
     return;
   }
   // Use this to select a different set?
-  var set = req.query.set;
-  console.log(set);
-  var reply = await index.getRedisClient().hgetall(currentSet);
+  var set = (await index.getRedisClient().get("dataset_name")) || currentSet;
+  var reply = await index.getRedisClient().hgetall(set);
   var response = (await getAllTeams(reply)) || [];
   // Sort in descending order by points.
   response.sort((a, b) => b.points - a.points);
-  res.json({ dataset: currentSet, response });
+  res.json({ dataset: set, response });
 });
 // List a specific player and their team
 router.get("/player/:id", async (req, res) => {
@@ -31,15 +30,16 @@ router.get("/player/:id", async (req, res) => {
     return;
   }
   // Use this to select a different set?
-  var set = req.query.set;
+
+  var set = (await index.getRedisClient().get("dataset_name")) || currentSet;
   console.log(set);
   var id = req.params.id;
-  var response = await getTeamOfPlayer(id);
+  var response = await getTeamOfPlayer(id, set);
 
   if (response != null) {
-    res.json({ dataset: currentSet, response });
+    res.json({ dataset: set, response });
   } else {
-    res.json({ dataset: currentSet, response: {} });
+    res.json({ dataset: set, response: {} });
   }
 });
 
@@ -80,18 +80,20 @@ async function generateTeam(body, id) {
  * @param {*} id ID of the player to get the name of.
  * @returns {Promise<Object>} A promise that resolves to the real name of the player or null if not existing.
  */
-async function getTeamOfPlayer(id) {
-  var reply = await index.getRedisClient().hgetall(currentSet);
-  let keys = Object.keys(reply);
+async function getTeamOfPlayer(id, set) {
+  var reply = await index.getRedisClient().hgetall(set);
+  if (reply != null) {
+    let keys = Object.keys(reply);
 
-  for (const key of keys) {
-    // Obtain the team object from the reply.
-    let team = reply[key];
-    // Parse the object into a JSON object.
-    var teamObject = JSON.parse(team);
-    // If the player is in the team, return the team object.
-    if (teamObject.members.includes(id)) {
-      return await modifyObjectToIncludeNames(teamObject);
+    for (const key of keys) {
+      // Obtain the team object from the reply.
+      let team = reply[key];
+      // Parse the object into a JSON object.
+      var teamObject = JSON.parse(team);
+      // If the player is in the team, return the team object.
+      if (teamObject.members.includes(id)) {
+        return await modifyObjectToIncludeNames(teamObject);
+      }
     }
   }
   return null;

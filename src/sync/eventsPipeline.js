@@ -6,6 +6,15 @@ const redisClient = createNodeRedisClient({
 });
 
 redisClient.nodeRedis.on("message", (channel, message) => {
+  if (channel === "dedsafio:sync") {
+    try {
+      var changeDatasetMessage = JSON.parse(message);
+      changeDatasetMessage.newDataset;
+      index.getPlayersRoute().changeSet();
+    } catch (error) {
+      console.log(error);
+    }
+  }
   console.log(`Message received: ${message} from channel ${channel}`);
 });
 redisClient.subscribe("dedsafio:events", "dedsafio:sync", "dedsafio:auth");
